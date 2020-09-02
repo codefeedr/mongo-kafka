@@ -24,6 +24,7 @@ import static com.mongodb.kafka.connect.source.MongoSourceConfig.POLL_AWAIT_TIME
 import static com.mongodb.kafka.connect.source.MongoSourceConfig.POLL_MAX_BATCH_SIZE_CONFIG;
 import static com.mongodb.kafka.connect.source.MongoSourceConfig.PUBLISH_FULL_DOCUMENT_ONLY_CONFIG;
 import static com.mongodb.kafka.connect.source.MongoSourceConfig.TOPIC_PREFIX_CONFIG;
+import static com.mongodb.kafka.connect.source.MongoSourceConfig.PUBLISH_TIMESTAMP;
 import static com.mongodb.kafka.connect.util.ConfigHelper.getMongoDriverInformation;
 import static java.lang.String.format;
 import static java.util.Collections.singletonMap;
@@ -160,6 +161,7 @@ public class MongoSourceTask extends SourceTask {
     LOGGER.debug("Polling Start: {}", startPoll);
     List<SourceRecord> sourceRecords = new ArrayList<>();
     boolean publishFullDocumentOnly = sourceConfig.getBoolean(PUBLISH_FULL_DOCUMENT_ONLY_CONFIG);
+    boolean publishTimestamp = sourceConfig.getBoolean(PUBLISH_TIMESTAMP);
     int maxBatchSize = sourceConfig.getInt(POLL_MAX_BATCH_SIZE_CONFIG);
     long nextUpdate = startPoll + sourceConfig.getLong(POLL_AWAIT_TIME_MS_CONFIG);
     String prefix = sourceConfig.getString(TOPIC_PREFIX_CONFIG);
@@ -203,15 +205,32 @@ public class MongoSourceTask extends SourceTask {
               LOGGER.trace("Adding {} to {}: {}", json, topicName, sourceOffset);
               String keyJson =
                   new BsonDocument(ID_FIELD, changeStreamDocument.get(ID_FIELD)).toJson();
-              sourceRecords.add(
-                  new SourceRecord(
-                      partition,
-                      sourceOffset,
-                      topicName,
-                      Schema.STRING_SCHEMA,
-                      keyJson,
-                      Schema.STRING_SCHEMA,
-                      json));
+
+              if (publishTimestamp) {
+                long timestamp = changeStreamDocument.get(ID_FIELD).asObjectId().getValue().getTimestamp();
+                sourceRecords.add(
+                        new SourceRecord(
+                                partition,
+                                sourceOffset,
+                                topicName,
+                                null,
+                                Schema.STRING_SCHEMA,
+                                keyJson,
+                                Schema.STRING_SCHEMA,
+                                json,
+                                timestamp
+                        ));
+              } else {
+                sourceRecords.add(
+                        new SourceRecord(
+                                partition,
+                                sourceOffset,
+                                topicName,
+                                Schema.STRING_SCHEMA,
+                                keyJson,
+                                Schema.STRING_SCHEMA,
+                                json));
+              }
             });
 
         if (sourceRecords.size() == maxBatchSize) {

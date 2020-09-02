@@ -152,6 +152,12 @@ public class MongoSourceConfig extends AbstractConfig {
       "The max size of the queue to use when copying data.";
   private static final int COPY_EXISTING_QUEUE_SIZE_DEFAULT = 16000;
 
+  public static final String PUBLISH_TIMESTAMP = "publish.timestamp";
+  private static final String PUBLISH_TIMESTAMP_DISPLAY = "Publish timestamp from id.";
+  private static final String PUBLISH_TIMESTAMP_DOC =
+          "Publish timestamp to Kafka from id of document.";
+  private static final boolean PUBLISH_TIMESTAMP_DEFAULT = false;
+
   public static final ConfigDef CONFIG = createConfigDef();
   private static final List<Consumer<MongoSourceConfig>> INITIALIZERS =
       singletonList(MongoSourceConfig::validateCollection);
@@ -400,6 +406,17 @@ public class MongoSourceConfig extends AbstractConfig {
         ++orderInGroup,
         Width.MEDIUM,
         POLL_AWAIT_TIME_MS_DISPLAY);
+
+    configDef.define(
+            PUBLISH_TIMESTAMP,
+            Type.BOOLEAN,
+            PUBLISH_TIMESTAMP_DEFAULT,
+            Importance.MEDIUM,
+            PUBLISH_TIMESTAMP_DOC,
+            group,
+            ++orderInGroup,
+            Width.MEDIUM,
+            PUBLISH_TIMESTAMP_DISPLAY);
 
     return configDef;
   }
